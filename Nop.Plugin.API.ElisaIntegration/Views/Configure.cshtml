@@ -1,0 +1,41 @@
+﻿@model Nop.Plugin.API.ElisaIntegration.Models.ConfigurationModel
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+<form asp-controller="ElisaConfiguration" asp-action="Configure" method="post">
+    <div class="cards-group">
+        <div class="card card-default">
+            <div class="card-body">
+                @T("Plugin.API.ElisaIntegration.Configuration.GenerateAPIToken")
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="Token" />
+                    </div>
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <nop-editor asp-for="Token" html-attributes="@(new { disabled = true })" />
+                            <span asp-validation-for="Token"></span>
+                            <div class="input-group-btn" onclick="setClipboard();">
+                                <span class="btn bg-blue" alt="copy token">Copy</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-9 col-md-offset-3">
+                        <input type="submit" name="save" class="btn bg-blue" value="@T("Plugin.API.ElisaIntegration.Configuration.GeneratePassword")" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<script>
+    function setClipboard() {
+        var copyText = $("#@Html.IdFor(model => model.Token)");
+        copyText.select();
+        navigator.clipboard.writeText(copyText.val());
+    }
+</script>
+

@@ -1,0 +1,11 @@
+﻿{
+  "Group": "API Synchronization",
+  "FriendlyName": "Elisa API Synchronization",
+  "SystemName": "API.ElisaIntegration",
+  "Version": "1.00",
+  "SupportedVersions": [ "4.50" ],
+  "Author": "na@elisa.io",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.API.ElisaIntegration.dll",
+  "Description": "This plugin allows you integrate elisa and nopcommerce"
+}
