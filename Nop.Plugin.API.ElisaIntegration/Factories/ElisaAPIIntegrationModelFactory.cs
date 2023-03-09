@@ -171,7 +171,7 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
             {
                 try
                 {
-                    var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1)).FirstOrDefault();
+                    var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1))?.FirstOrDefault() : null;
                     var pictures = await _pictureService.GetPicturesByProductIdAsync(product.Id);
                     var productAttributeMappings = await _productAttributeService.GetProductAttributeMappingsByProductIdAsync(product.Id);
                     //get product SEO slug name
