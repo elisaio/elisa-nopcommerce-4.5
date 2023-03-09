@@ -206,7 +206,7 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
                         ProductDetailUrl = urlHelper.RouteUrl("Product", new { SeName = seName }, _webHelper.GetCurrentRequestProtocol()),
                         ProductType = ((CustomProductTypes)product.ProductTypeId).ToString(),
                         Status = product.Published ? "enabled" : "disabled",
-                        MainImage = picture != null ? await _pictureService.GetPictureUrlAsync(picture.Id, _mediaSettings.ProductThumbPictureSize) : string.Empty,
+                        MainImage = picture != null ? await _pictureService.GetPictureUrlAsync(picture.Id, _mediaSettings.ProductThumbPictureSize) : await _pictureService.GetDefaultPictureUrlAsync(_mediaSettings.ProductThumbPictureSize),
                         OtherImage = pictures != null && pictures.Count > 0 ? await pictures.SelectAwait(async x => await _pictureService.GetPictureUrlAsync(x.Id, _mediaSettings.AssociatedProductPictureSize, false)).ToListAsync() : null,
                         ManageStock = product.ManageInventoryMethodId == 2 ? false : true,
                         Inventory = product.ManageInventoryMethodId == 2 ? 0 : product.StockQuantity,
