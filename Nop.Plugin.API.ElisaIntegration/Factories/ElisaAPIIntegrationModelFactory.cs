@@ -169,99 +169,113 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
 
             foreach (var product in updatedProducts)
             {
-                var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1)).FirstOrDefault();
-                var pictures = await _pictureService.GetPicturesByProductIdAsync(product.Id);
-                var productAttributeMappings = await _productAttributeService.GetProductAttributeMappingsByProductIdAsync(product.Id);
-                //get product SEO slug name
-                var seName = await _urlRecordService.GetSeNameAsync(product);
-                IList<ProductAttributesModel> cpam = new List<ProductAttributesModel>();
-
-                foreach (var pam in productAttributeMappings)
+                try
                 {
-                    var productAttribute = await _productAttributeService.GetProductAttributeByIdAsync(pam.ProductAttributeId);
-                    var productAttributeValue = await _productAttributeService.GetProductAttributeValuesAsync(pam.Id);
-                    cpam.Add(new ProductAttributesModel
+                    var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1)).FirstOrDefault();
+                    var pictures = await _pictureService.GetPicturesByProductIdAsync(product.Id);
+                    var productAttributeMappings = await _productAttributeService.GetProductAttributeMappingsByProductIdAsync(product.Id);
+                    //get product SEO slug name
+                    var seName = await _urlRecordService.GetSeNameAsync(product);
+                    IList<ProductAttributesModel> cpam = new List<ProductAttributesModel>();
+
+                    if (productAttributeMappings != null && productAttributeMappings.Count > 0)
                     {
-                        AttributeId = productAttribute.Id,
-                        Name = productAttribute.Name,
-                        Position = pam.DisplayOrder,
-                        AttributeValues = productAttributeValue.Select(x => x.Name).ToList()
-                    });
-                }
-
-                var customProduct = new CustomProductModel
-                {
-                    Id = product.Id,
-                    ParentId = product.ParentGroupedProductId,
-                    AttributeCombinationId = 0,
-                    Name = product.Name,
-                    Sku = product.Sku,
-                    Price = product.Price,
-                    Description = product.ShortDescription,
-                    ProductDetailUrl = urlHelper.RouteUrl("Product", new { SeName = seName }, _webHelper.GetCurrentRequestProtocol()),
-                    ProductType = ((CustomProductTypes)product.ProductTypeId).ToString(),
-                    Status = product.Published ? "enabled" : "disabled",
-                    MainImage = picture != null ? await _pictureService.GetPictureUrlAsync(picture.Id, _mediaSettings.ProductThumbPictureSize) : string.Empty,
-                    OtherImage = pictures.Count > 0 ? await pictures.SelectAwait(async x => await _pictureService.GetPictureUrlAsync(x.Id, _mediaSettings.AssociatedProductPictureSize, false)).ToListAsync() : null,
-                    ManageStock = product.ManageInventoryMethodId == 2 ? false : true,
-                    Inventory = product.ManageInventoryMethodId == 2 ? 0 : product.StockQuantity,
-                    AllowOutOfStock = false,
-                    //AvailableProductAttributes = product.ManageInventoryMethodId == 2 ? cpam : null
-                    AvailableProductAttributes = cpam
-                };
-
-                productList.Add(customProduct);
-
-                //insert child products if available
-                var pacs = await _productAttributeService.GetAllProductAttributeCombinationsAsync(product.Id);
-                if (pacs.Count > 0)
-                {
-                    foreach (var pac in pacs)
-                    {
-                        if (combinationIds.Count > 0 && !combinationIds.Contains(pac.Id))
-                            continue;
-
-                        List<AssociatedProductAttributesModel> associatedAttributes = new List<AssociatedProductAttributesModel>();
-                        var parsedProductAttributes = await _productAttributeParser.ParseProductAttributeMappingsAsync(pac.AttributesXml);
-                        if (parsedProductAttributes.Count > 0)
+                        foreach (var pam in productAttributeMappings)
                         {
-                            foreach (var ppa in parsedProductAttributes)
+                            var productAttribute = await _productAttributeService.GetProductAttributeByIdAsync(pam.ProductAttributeId);
+                            var productAttributeValue = await _productAttributeService.GetProductAttributeValuesAsync(pam.Id);
+                            cpam.Add(new ProductAttributesModel
                             {
-                                var attributeValuesStr = _productAttributeParser.ParseValues(pac.AttributesXml, ppa.Id);
-                                foreach (var av in attributeValuesStr)
+                                AttributeId = productAttribute.Id,
+                                Name = productAttribute.Name,
+                                Position = pam.DisplayOrder,
+                                AttributeValues = productAttributeValue.Select(x => x.Name).ToList()
+                            });
+                        }
+                    }
+
+                    var customProduct = new CustomProductModel
+                    {
+                        Id = product.Id,
+                        ParentId = product.ParentGroupedProductId,
+                        AttributeCombinationId = 0,
+                        Name = product.Name,
+                        Sku = product.Sku,
+                        Price = product.Price,
+                        Description = product.ShortDescription,
+                        ProductDetailUrl = urlHelper.RouteUrl("Product", new { SeName = seName }, _webHelper.GetCurrentRequestProtocol()),
+                        ProductType = ((CustomProductTypes)product.ProductTypeId).ToString(),
+                        Status = product.Published ? "enabled" : "disabled",
+                        MainImage = picture != null ? await _pictureService.GetPictureUrlAsync(picture.Id, _mediaSettings.ProductThumbPictureSize) : string.Empty,
+                        OtherImage = pictures != null && pictures.Count > 0 ? await pictures.SelectAwait(async x => await _pictureService.GetPictureUrlAsync(x.Id, _mediaSettings.AssociatedProductPictureSize, false)).ToListAsync() : null,
+                        ManageStock = product.ManageInventoryMethodId == 2 ? false : true,
+                        Inventory = product.ManageInventoryMethodId == 2 ? 0 : product.StockQuantity,
+                        AllowOutOfStock = false,
+                        //AvailableProductAttributes = product.ManageInventoryMethodId == 2 ? cpam : null
+                        AvailableProductAttributes = cpam
+                    };
+
+                    productList.Add(customProduct);
+
+                    //insert child products if available
+                    var pacs = await _productAttributeService.GetAllProductAttributeCombinationsAsync(product.Id);
+                    if (pacs != null && pacs.Count > 0)
+                    {
+                        foreach (var pac in pacs)
+                        {
+                            if (combinationIds.Count > 0 && !combinationIds.Contains(pac.Id))
+                                continue;
+
+                            List<AssociatedProductAttributesModel> associatedAttributes = new List<AssociatedProductAttributesModel>();
+                            if (!string.IsNullOrEmpty(pac.AttributesXml))
+                            {
+                                var parsedProductAttributes = await _productAttributeParser.ParseProductAttributeMappingsAsync(pac.AttributesXml);
+                                if (parsedProductAttributes != null && parsedProductAttributes.Count > 0)
                                 {
-                                    associatedAttributes.Add(new AssociatedProductAttributesModel
+                                    foreach (var ppa in parsedProductAttributes)
                                     {
-                                        ProductAttributeId = ppa.ProductAttributeId,
-                                        ProductAttributeValue = (await _productAttributeService.GetProductAttributeValueByIdAsync(int.Parse(av))).Name
-                                    });
+                                        var attributeValuesStr = _productAttributeParser.ParseValues(pac.AttributesXml, ppa.Id);
+                                        foreach (var av in attributeValuesStr)
+                                        {
+                                            associatedAttributes.Add(new AssociatedProductAttributesModel
+                                            {
+                                                ProductAttributeId = ppa.ProductAttributeId,
+                                                ProductAttributeValue = (await _productAttributeService.GetProductAttributeValueByIdAsync(int.Parse(av)))?.Name ?? string.Empty
+                                            });
+                                        }
+                                    }
                                 }
                             }
-                        }
 
-                        var childProductPicture = await _pictureService.GetPictureByIdAsync(pac.PictureId);
-                        var childProduct = new CustomProductModel
-                        {
-                            Id = pac.Id,
-                            ParentId = product.Id,
-                            AttributeCombinationId = pac.Id,
-                            Name = product.Name + " " + pac.Sku,
-                            Sku = product.Sku + "-" + pac.Sku,
-                            Price = Convert.ToDecimal(pac.OverriddenPrice),
-                            Description = product.ShortDescription,
-                            ProductDetailUrl = urlHelper.RouteUrl("Product", new { SeName = seName }, _webHelper.GetCurrentRequestProtocol()),
-                            ProductType = CustomProductTypes.Simple.ToString(),
-                            Status = product.Published && pac.StockQuantity > 0 ? "enabled" : "disabled",
-                            MainImage = childProductPicture != null ? await _pictureService.GetPictureUrlAsync(childProductPicture.Id, _mediaSettings.ProductThumbPictureSize) : await _pictureService.GetDefaultPictureUrlAsync(_mediaSettings.ProductThumbPictureSize),
-                            OtherImage = await pictures.SelectAwait(async x => await _pictureService.GetPictureUrlAsync(x.Id, _mediaSettings.AssociatedProductPictureSize, false)).ToListAsync(),
-                            ManageStock = true,
-                            Inventory = pac.StockQuantity,
-                            AllowOutOfStock = pac.AllowOutOfStockOrders,
-                            AssociatedProductAttributes = associatedAttributes,
-                            AttributeXML = pac.AttributesXml
-                        };
-                        productList.Add(childProduct);
+                            var childProductPicture = await _pictureService.GetPictureByIdAsync(pac.PictureId);
+                            var childProduct = new CustomProductModel
+                            {
+                                Id = pac.Id,
+                                ParentId = product.Id,
+                                AttributeCombinationId = pac.Id,
+                                Name = product.Name + " " + pac.Sku,
+                                Sku = product.Sku + "-" + pac.Sku,
+                                Price = Convert.ToDecimal(pac.OverriddenPrice),
+                                Description = product.ShortDescription,
+                                ProductDetailUrl = urlHelper.RouteUrl("Product", new { SeName = seName }, _webHelper.GetCurrentRequestProtocol()),
+                                ProductType = CustomProductTypes.Simple.ToString(),
+                                Status = product.Published && pac.StockQuantity > 0 ? "enabled" : "disabled",
+                                MainImage = childProductPicture != null ? await _pictureService.GetPictureUrlAsync(childProductPicture.Id, _mediaSettings.ProductThumbPictureSize) : await _pictureService.GetDefaultPictureUrlAsync(_mediaSettings.ProductThumbPictureSize),
+                                OtherImage = pictures != null && pictures.Count > 0 ? await pictures.SelectAwait(async x => await _pictureService.GetPictureUrlAsync(x.Id, _mediaSettings.AssociatedProductPictureSize, false)).ToListAsync() : null,
+                                ManageStock = true,
+                                Inventory = pac.StockQuantity,
+                                AllowOutOfStock = pac.AllowOutOfStockOrders,
+                                AssociatedProductAttributes = associatedAttributes,
+                                AttributeXML = pac.AttributesXml
+                            };
+                            productList.Add(childProduct);
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    await _logger.ErrorAsync(ex.Message);
+                    throw;
                 }
             }
 
