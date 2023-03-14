@@ -11,7 +11,7 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Elisa Integration")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Easy Live Sales Aps")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © Easy Live Sales Aps")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]

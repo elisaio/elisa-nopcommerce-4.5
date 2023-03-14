@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
 	  <Copyright>Copyright © Easy Live Sales Aps</Copyright>
-	  <Company>Elisa Integration</Company>
+	  <Company>Easy Live Sales Aps</Company>
 	  <Authors>Easy Live Sales Aps</Authors>
 	  <RepositoryType>Git</RepositoryType>
 	  <OutputPath>..\..\Presentation\Nop.Web\Plugins\API.ElisaIntegration</OutputPath>
