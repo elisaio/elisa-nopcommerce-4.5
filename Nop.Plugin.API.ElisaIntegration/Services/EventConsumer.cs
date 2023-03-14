@@ -48,13 +48,16 @@ namespace Nop.Plugin.API.ElisaIntegration.Services
 
             var order = eventMessage.Entity;
             var elisaCartId = _httpContextAccessor.HttpContext.Session.Get<Guid>(ElisaPluginDefaults.ElisaCartId);
-            var customCart = await _customCartService.GetCustomCartByElisaCartId(elisaCartId);
-            if (customCart != null)
+            if (elisaCartId != Guid.Empty)
             {
-                await _genericAttributeService.SaveAttributeAsync<Guid>(order, ElisaPluginDefaults.ElisaReference, customCart.ElisaCartId, (await _storeContext.GetCurrentStoreAsync()).Id);
+                var customCart = await _customCartService.GetCustomCartByElisaCartId(elisaCartId);
+                if (customCart != null)
+                {
+                    await _genericAttributeService.SaveAttributeAsync<Guid>(order, ElisaPluginDefaults.ElisaReference, customCart.ElisaCartId, (await _storeContext.GetCurrentStoreAsync()).Id);
 
-                await _customCartService.DeleteCustomCartAsync(customCart);
+                    await _customCartService.DeleteCustomCartAsync(customCart);
 
+                }
             }
         }
         #endregion

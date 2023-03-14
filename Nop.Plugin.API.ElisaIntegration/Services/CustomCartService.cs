@@ -42,16 +42,16 @@ namespace Nop.Plugin.API.ElisaIntegration.Services
             await _eventPublisher.EntityDeletedAsync(cart);
         }
 
-        public Task<CustomCart> GetCustomCartByElisaCartId(Guid elisaCartId)
+        public async Task<CustomCart> GetCustomCartByElisaCartId(Guid elisaCartId)
         {
             if (elisaCartId == Guid.Empty)
                 return null;
 
-            var customCart = (from ec in _customCartRepository.Table
+            var customCart = await (from ec in _customCartRepository.Table
                               where ec.ElisaCartId == elisaCartId
-                              select ec).FirstOrDefault();
+                              select ec).FirstOrDefaultAsync();
 
-            return Task.FromResult(customCart);
+            return customCart;
         }
 
         public async Task<CustomCart> GetFirstCustomCartAsync()

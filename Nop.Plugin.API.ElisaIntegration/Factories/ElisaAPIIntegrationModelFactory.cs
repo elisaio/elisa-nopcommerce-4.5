@@ -130,7 +130,7 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
         #endregion
 
         #region Methods
-        public async Task<string> PrepareProdutsJsonSerilization(string timeStamp, int pageNumber)
+        public async Task<string> PrepareProdutsJsonSerilization(string timeStamp, int pageNumber, int pageSize = 1000)
         {
             ItemResponseDto items = new ItemResponseDto();
             IList<CustomProductModel> productList = new List<CustomProductModel>();
@@ -141,7 +141,6 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
             List<int> productIds = new List<int>();
             List<int?> combinationIds = new List<int?>();
 
-            int pageSize = 1000;
             if (Convert.ToDouble(timeStamp) > 0)
             {
                 var query = (from sqh in _stockQuantityHistoryRepository.Table
@@ -171,7 +170,7 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
             {
                 try
                 {
-                    var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1))?.FirstOrDefault() : null;
+                    var picture = (await _pictureService.GetPicturesByProductIdAsync(product.Id, 1))?.FirstOrDefault() ?? null;
                     var pictures = await _pictureService.GetPicturesByProductIdAsync(product.Id);
                     var productAttributeMappings = await _productAttributeService.GetProductAttributeMappingsByProductIdAsync(product.Id);
                     //get product SEO slug name
@@ -275,7 +274,6 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
                 catch (Exception ex)
                 {
                     await _logger.ErrorAsync(ex.Message);
-                    throw;
                 }
             }
 
@@ -357,8 +355,10 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
                     //store unique elisa cart Id in session
                     _httpContextAccessor.HttpContext.Session.Set(ElisaPluginDefaults.ElisaCartId, elisaReferenceId);
 
+                    var currentCustomer = await _workContext.GetCurrentCustomerAsync();
+                    var currentStore = _storeContext.GetCurrentStore();
                     //●	Delete all current products in the customer basket, if any
-                    var cart = await _shoppingCartService.GetShoppingCartAsync(await _workContext.GetCurrentCustomerAsync(), ShoppingCartType.ShoppingCart, _storeContext.GetCurrentStore().Id);
+                    var cart = await _shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.ShoppingCart, currentStore.Id);
                     cart.ForEach(async x => await _shoppingCartService.DeleteShoppingCartItemAsync(x));
                     //cart.Clear();
 
@@ -379,10 +379,10 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
                             }
 
                             //now let's try adding product to the cart (now including product attribute validation, etc)
-                            var addToCartWarnings = await _shoppingCartService.AddToCartAsync(customer: await _workContext.GetCurrentCustomerAsync(),
+                            var addToCartWarnings = await _shoppingCartService.AddToCartAsync(customer: currentCustomer,
                                 product: product,
                                 shoppingCartType: ShoppingCartType.ShoppingCart,
-                                storeId: _storeContext.GetCurrentStore().Id,
+                                storeId: currentStore.Id,
                                 attributesXml: attrXml,
                                 customerEnteredPrice: item.Price > 0 ? item.Price : product.Price,
                                 quantity: item.Quantity);
@@ -396,10 +396,10 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
                                 await _customCartService.DeleteCustomCartItemsAsync(cartItems);
 
                                 //remove items from shopping cart item table if any
-                                var partialCart = await _shoppingCartService.GetShoppingCartAsync(await _workContext.GetCurrentCustomerAsync(), ShoppingCartType.ShoppingCart, _storeContext.GetCurrentStore().Id);
+                                var partialCart = await _shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.ShoppingCart, currentStore.Id);
                                 partialCart.ForEach(async x => await _sciRepository.DeleteAsync(x));
 
-                                await _staticCacheManager.ClearAsync();
+                                //await _staticCacheManager.ClearAsync();
 
                                 response.IsSuccess = false;
                                 addToCartWarnings.ForEach(async x => await _logger.ErrorAsync(x));
@@ -453,22 +453,25 @@ namespace Nop.Plugin.API.ElisaIntegration.Factories
             IList<OrderResponseDto> elisaOrders = new List<OrderResponseDto>();
             DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             DateTime? fromDate = dtDateTime.AddSeconds(Convert.ToDouble(timeStamp)).ToUniversalTime();
+            var currentStore = _storeContext.GetCurrentStore();
+            var ordersQuery = (from o in _orderRepository.Table
+                          where currentStore.Id == o.StoreId
+                          select o);
 
-            var orders = (from o in _orderRepository.Table
-                          where Convert.ToDecimal(timeStamp) > 0 ? o.CreatedOnUtc > fromDate.Value : true &&
-                          !_catalogSettings.IgnoreStoreLimitations ? _storeContext.GetCurrentStore().Id == o.StoreId : true
-                          select o).ToList();
+            if (Convert.ToDecimal(timeStamp) > 0)
+            {
+                ordersQuery = ordersQuery.Where(o => o.CreatedOnUtc > fromDate.Value);
+            }
+            var orders = await ordersQuery.ToListAsync();
 
             foreach (var order in orders)
             {
-                var elisaReferenceId = await _genericAttributeService.GetAttributeAsync<Guid>(order, ElisaPluginDefaults.ElisaReference, _storeContext.GetCurrentStore().Id);
-
-                var customCartItems = _customCartService.GetCustomCartItemsByCartId(elisaReferenceId);
-
-                var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
+                var elisaReferenceId = await _genericAttributeService.GetAttributeAsync<Guid>(order, ElisaPluginDefaults.ElisaReference, currentStore.Id);
 
                 if (elisaReferenceId != Guid.Empty)
                 {
+                    var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
+
                     var elisaOrder = new OrderResponseDto
                     {
                         OrderId = order.Id,
